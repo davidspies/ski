@@ -1,0 +1,181 @@
+:{.}=\x\y\z x(yz);
+:{>>=}=\x\y yx;
+:{flip}=\x\y\z xzy;
+
+:{true}=K;
+:{false}=KI;
+
+:{ifelse}=I;
+
+:{less}=\{iflt} \{ifeq} \{ifgt} {iflt};
+:{equal}=\{iflt} \{ifeq} \{ifgt} {ifeq};
+:{greater}=\{iflt} \{ifeq} \{ifgt} {ifgt};
+
+:{not}=\b {ifelse}b{false}{true};
+:{xor}=\b {ifelse}b{not}I;
+:{biteq}=\b {ifelse}bI{not};
+:{bitcmp}=\b\c {ifelse}b({ifelse}c{equal}{greater})({ifelse}c{less}{equal});
+:{&&}=\b\c bcb;
+:{||}=\b\c bbc;
+
+:{c0}=KI;
+:{c1}=I;
+:{c1+}=S {.};
+:{c2}={c1+}{c1};
+:{c+}={.} S ({.} {.});
+:{c*}={.};
+:{c^}={>>=};
+:{c2*}={c*}{c2};
+
+:{cons}=\{car}\{cdr} \{op}\{base} {op}{car}({cdr}{op}{base});
+:{empty}=KI;
+:{null}=\{xs} {xs}(K(K{false})){true};
+:{map}=\{op}\{xs} {xs}(\{car}\{rest} {cons}({op}{car}){rest}){empty};
+:{filter}=\{cond}\{xs} {xs}(\{car}\{rest} {ifelse}({cond}{car})({cons}{car})I{rest});
+:{foldl}=\{op}\{base}\{xs} {xs}(\{car}\{cdrfn} (\x {cdrfn}({op}x{car})))I{base};
+:{++}={>>=}{cons};
+:{reverse}={foldl}({flip}{cons}){empty};
+:{head}=\{xs} {xs}KI;
+:{tails}=\{xs}
+  {xs}
+    (\{car}\{rest}
+      {cons}({cons}{car}({head}{rest})){rest}
+    )
+    ({cons}{empty}{empty});
+
+:{clen}=\{xs} {xs}(K{c1+}){c0};
+
+:{passive_0}=\{ifzero} \{oppred} {ifzero};
+:{passive_succ}={.} K {>>=};
+:{passive_is_0}=\n n {true} (K {false});
+:{passive_pred}=\n n {passive_0} I;
+
+:{c>=}=\m \n {passive_is_0} $ m {passive_pred} $ n {passive_succ} {passive_0};
+
+:{pair}=\l\r \{op} {op}lr;
+:{left}={>>=}{true};
+:{right}={>>=}{false};
+:{swap}={>>=}${flip}{pair};
+
+:{scanl}=\{op}\{base}\{xs}
+  {foldl}
+  (\{pr}\{car}
+    {pr}
+    (\{accumfn}\{current}
+      {pair}
+      ({.}{accumfn}({cons}{current}))
+      ({op}{current}{car})
+    )
+  )
+  ({pair}I{base})
+  {xs}
+  (\{accumfn}\{final} {accumfn}${cons}{final}{empty});
+
+:{b0}={false};
+:{b1}={true};
+
+:{passive_empty}=K;
+:{passive_cons}=\{car} \{cdr} \{ifnull} \{opcons} {opcons}{car}{cdr};
+:{passive_null}=\{xs} {xs}{true}(K(K{false}));
+:{pacify_list}=\{xs} {xs}{passive_cons}{passive_empty};
+
+:{zip_bits}=\{xs}\{ys}
+  {ifelse}({c>=}({clen}{xs})({clen}{ys}))
+    ({pair}{xs}{ys})
+    ({.}({map}{swap})({pair}{ys}{xs}))
+  (\{bigger}\{smaller}
+    {bigger}
+      (\{lcar}\{lcdrfn}
+        :{join}=(\{rcar}\{rcdr} {cons}({pair}{lcar}{rcar})({lcdrfn}{rcdr}));
+        (\{rlist}
+          {rlist} ({join}{b0}{passive_empty}) {join}
+        )
+      )
+      (K{empty})
+      ({pacify_list}{smaller})
+  );
+
+:0={empty};
+:1={cons}{b1}{empty};
+:{1+}=
+  \n $ {right} $ n (
+    \{bit} \{ospr}
+    {ospr} (
+      \{orig}\{succ}
+      {pair}(
+        {cons}{bit}{orig}
+      )(
+        {ifelse} {bit}
+        ({cons}{b0}{succ})
+        ({cons}{b1}{orig})
+      )
+    )
+  ) ({pair} 0 1);
+:+=\m\n {left}${zip_bits}mn
+  (\{car}\{added}
+    {car} (
+      \{lbit} \{rbit}
+      ({ifelse} ({xor}{lbit}{rbit})
+        ({added}
+          (\{orig}\{succ}
+            {pair}
+              ({cons}{b1}{orig})
+              ({cons}{b0}{succ})
+          )
+        )(
+          :{side} = {ifelse}{lbit}{right}{left}{added};
+          {pair}({cons}{b0}{side})({cons}{b1}{side})
+        )
+      )
+    )
+  ) ({pair} 0 1);
+:{2*}=\n {ifelse}({null}n){empty}({cons}0n);
+:-=\m\n {left}${zip_bits}mn
+  (\{car}\{subbed}
+    {car} (
+      \{lbit} \{rbit}
+      ({ifelse}({biteq}{lbit}{rbit})
+        ({subbed}
+          (\{orig}\{pred}
+            {pair}
+              ({2*}{orig})
+              ({cons}{b1}{pred})
+          )
+        )(
+          :{side} = {ifelse}{lbit}{left}{right}{subbed};
+          {pair}({cons}{b1}{side})({2*}{side})
+        )
+      )
+    )
+  ) ({pair} 0 0);
+
+:{genmul}=\{op}\{dbl}\{base}
+  \m\n n(\{curbit}\{rest} {ifelse}{curbit}({op}m)I${dbl}{rest}){base};
+:*={genmul}+{2*}0;
+:{genexp}=\{op} {genmul}{op}(S{op}I);
+:{**}={genexp}*1;
+
+:{cmp}=\m\n {zip_bits}mn(\{car}\{rest} {rest}{less}({car}{bitcmp}){greater}){equal};
+:{>=}=\m\n {cmp}mn{false}{true}{true};
+
+:{diffzlist}=\n\d {foldl}(\{current}\{pr} {ifelse}({right}{pr}){empty}({cons}{b0}{current})){empty}({zip_bits}nd);
+
+:{bin2church}=\n n (
+  \{bit} \{current}
+  {ifelse} {bit} {c1+} I $ * {c2} {current}
+) {c0};
+:{church2bin}=\c c {1+} 0;
+
+:{divmod}=\n\d {foldl}(
+    \{pr}\{dshift}
+    {pr} (
+      \l\r
+      {ifelse}({>=}r{dshift})
+        ({pair}({cons}{b1}l)(-r{dshift}))
+        ({pair}({2*}l)r)
+    )
+  )
+  ({pair}0n)
+  ({map}(\{zs}{++}{zs}d)${tails}${diffzlist}nd);
+:/=\n\d {left}${divmod}nd;
+:%=\n\d {right}${divmod}nd;

@@ -1,0 +1,16 @@
+:{rI}=\{isS} \{isK} \{isI} {isI};
+:{rK}=\{isS} \{isK} \{isI} {isK};
+:{rS}=\{isS} \{isK} \{isI} {isS};
+:{leaf}=\{item} \{base}\{join} {base}{item};
+:{node}=\{left}\{right} \{base}\{join} {join}({left}{base}{join})({right}{base}{join});
+:{skicase}=\{ifS}\{ifK}\{ifI}\{join} \{expr}
+  {expr}
+    (\{item} {item}{ifS}{ifK}{ifI})
+    {join};
+:{eval}={skicase}SKII;
+:{rereflect}={skicase}(R({leaf}{rS}))(R({leaf}{rK}))(R({leaf}{rI}))(
+  \{left} \{right} R({node}{left}{right})
+);
+:{normalize} = \x {node}x({rereflect}x);
+:{varify}={skicase}skiI;
+:{quine} = {normalize} $ R{normalize};
