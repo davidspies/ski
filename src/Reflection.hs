@@ -22,8 +22,8 @@ node left right = S !+ (S !+ (K !+ S) !+ (S !+ (K !+ (S !+ I)) !+ left)) !+ righ
 reflect :: (a -> b) -> Ski a -> Ski b
 reflect op = helper
   where
-    helper I                = leaf rI
-    helper K                = leaf rK
-    helper S                = leaf rS
-    helper (Var v)          = Var (op v)
-    helper Ski{expr=l :+ r} = node (helper l) (helper r)
+    helper I                   = leaf rI
+    helper K                   = leaf rK
+    helper S                   = leaf rS
+    helper (Var v)             = Var (op v)
+    helper Ski{rawExpr=l :+ r} = node (helper l) (helper r)

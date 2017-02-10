@@ -3,7 +3,7 @@ module Parse
     , skiDict
     ) where
 
-import           Control.Arrow
+import           Control.Monad
 import           Data.Char
 import           Data.Map.Lazy                 (Map)
 import qualified Data.Map.Lazy                 as Map
@@ -17,11 +17,14 @@ type Level = Int
 
 type SkiParser = GenParser Char (Level, Map String (Ski (Level, String)))
 
+char_ :: Char -> Parsec String u ()
+char_ = void . char
+
 readBracesContent :: SkiParser String
 readBracesContent = do
-  char '{'
+  char_ '{'
   content <- many (readBraces <|> fmap (: []) (noneOf "{}"))
-  char '}'
+  char_ '}'
   return $ concat content
 
 readBraces :: SkiParser String
@@ -37,19 +40,19 @@ primitive c   = parserFail $ c : " is not a primitive"
 
 readParens :: SkiParser (Ski (Level, String))
 readParens = do
-  char '('
+  char_ '('
   result <- skiTokens
-  char ')'
+  char_ ')'
   return result
 
 -- Inserts definition into the state map and returns the old level and map.
 definition :: SkiParser (Level, Map String (Ski (Level, String)))
 definition = do
-  char ':'
+  char_ ':'
   varname <- skiVar
-  char '='
+  char_ '='
   val <- skiTokens
-  char ';'
+  char_ ';'
   (curLevel, curMap) <- getState
   putState (curLevel + 1, Map.insert varname val curMap)
   return (curLevel, curMap)
@@ -63,7 +66,7 @@ defineExpr = do
 
 lambdaExpr :: SkiParser (Ski (Level, String))
 lambdaExpr = do
-  char '\\'
+  char_ '\\'
   varname <- skiVar
   (curLevel, curMap) <- getState
   putState (curLevel + 1, Map.insert varname (Var (curLevel, varname)) curMap)
@@ -83,8 +86,8 @@ skiToken =
   <|> readParens
   <|> defineExpr
   <|> lambdaExpr
-  <|> (char 'R' >> reflectToken)
-  <|> (char '$' >> skiTokens)
+  <|> (char_ 'R' >> reflectToken)
+  <|> (char_ '$' >> skiTokens)
   <|> (upper >>= primitive)
   <|> (singleCharVar >>= var)
 
@@ -105,8 +108,8 @@ singleCharVar = do
 skiTokens :: SkiParser (Ski (Level, String))
 skiTokens = do
   spaces
-  tokens <- endBy1 skiToken spaces
-  return $ foldl1 (!^) tokens
+  stokens <- endBy1 skiToken spaces
+  return $ foldl1 (!^) stokens
 
 getResult :: SkiParser a -> String -> a
 getResult m s =
@@ -121,5 +124,5 @@ skiDict :: String -> Map String (Ski String)
 skiDict = fmap (fmap snd) . snd . getResult helper
   where
     helper = do
-      endBy definition spaces
+      void $ endBy definition spaces
       getState
