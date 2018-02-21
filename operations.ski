@@ -56,6 +56,7 @@
 :{,}={->>};
 :{fst}={->}{true};
 :{snd}={->}{false};
+:{curry}=\{func}\x\y {func}({,}xy);
 :{uncurry}={->};
 :{swap}={uncurry}${flip}{,};
 :{first} =\{op} {uncurry}(\x\y {,}({op}x)y);
@@ -182,3 +183,12 @@
   ({map}(\{zs}{++}{zs}d)${tails}${diffzlist}nd);
 :/=\n\d {fst}${divmod}nd;
 :%=\n\d {snd}${divmod}nd;
+
+:{unfoldr}=\{op}\{base}\{church_reps}
+  {first} ({->}{empty}) $
+    {church_reps}(
+      {uncurry}(
+        \{func}\{running}
+        {first} ({.}({.}{func}){cons}) ({op}{running})
+      )
+    )({,}I{base});
